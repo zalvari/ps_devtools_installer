@@ -1,0 +1,4 @@
+group=bulk
+name=dev_team
+version=1
+dependencies=jdk1.8:1.8.241,eclipse:2020-03,7zip:9.20

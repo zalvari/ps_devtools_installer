@@ -1,0 +1,6 @@
+group=utils
+name=7zip
+version=9.20
+url=https://www.7-zip.org/a/7za920.zip
+env_ZIP_HOME=${basedir}
+env_PATH=%ZIP_HOME%
