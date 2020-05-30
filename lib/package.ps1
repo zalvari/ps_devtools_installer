@@ -2,16 +2,62 @@
 
 
 function Validate_Package_Descriptor ([Hashtable[]]$properties){
-    $packageListKeys = @("group", "name", "version", "url")      
-    foreach($key in $packageListKeys){        
+    if ($properties.group -eq "bulk"){
+        $packageListKeys = @("group", "name", "version", "dependencies")
+    }else{
+        $packageListKeys = @("group", "name", "version", "url")
+
+    }
+    foreach($key in $packageListKeys){
         if ([string]::IsNullOrEmpty($properties.$key)){
             Write-Warning "Invalid package descriptor. Missing property $key"
             return $false
-        }                
+        }
     }
-  
+     
     return $true
 }
+
+Function Merge-Hashtables {
+    $Output = @{}
+    ForEach ($Hashtable in ($Input + $Args)) {
+        If ($Hashtable -is [Hashtable]) {
+            ForEach ($Key in $Hashtable.Keys) {$Output.$Key = $Hashtable.$Key}
+        }
+    }
+    $Output
+}
+
+function check_dependencies([Hashtable[]]$package,[Hashtable[]]$availablePackages){
+    $dependencies = @{}
+    
+    $package.dependencies.split(",") | forEach {
+         $pckg_name=$_.split(":")[0]
+        $pckg_version=$_.split(":")[1]
+        
+        foreach($k in $availablePackages.keys){                        
+            if ($($availablePackages.$k).name -eq $pckg_name -and $($availablePackages.$k).version -eq $pckg_version){                           
+                
+                if ( -not [string]::IsNullOrEmpty($($availablePackages.$k).dependencies) ){
+                   $child_dep = $(check_dependencies $($availablePackages.$k) $availablePackages)
+                   $dependencies=Merge-Hashtables $child_dep  $dependencies
+                }
+                if (-not $dependencies.ContainsKey($($availablePackages.$k).name+":"+$($availablePackages.$k).version)){
+                    $dependencies.add($_,$availablePackages.$k) 
+                    write-host "[$(get_package_name $package)] dependency $_ found"
+                }
+            }
+        }
+        
+        if ( [string]::IsNullOrEmpty($_) ){
+                Write-Warning "[$(get_package_name $package)] can't find dependency $_"
+                return  @{}
+            }         
+    }
+    
+    return $dependencies
+}
+
 
 function get_package_name ([Hashtable[]] $package){
     return  "["+$package.group+"] "+$package.name+ " ("+$package.version+")"
@@ -32,7 +78,7 @@ function Load_Packages ([string] $dir) {
         $packageProperties = (get-content $_.FullName ) | ConvertFrom-StringData         
         $valid=Validate_Package_Descriptor $packageProperties
         
-        if ($valid){                   
+        if ($valid){                  
             $packages.add(""+$index, $packageProperties)
             $index=$index+1   
             write-host "Loaded $(get_package_name $packageProperties)"        
@@ -117,7 +163,7 @@ function install_package ([Hashtable[]]$package){
 
 function unzip_package ([string] $url, [string] $destination){
     if ($url.StartsWith("http")){
-        $zipFilename=[System.IO.Path]::GetTempFileName()
+        $zipFilename=[System.IO.Path]::GetTempFileName()+".zip"
         Invoke-WebRequest $url -OutFile $zipFilename -PassThru         
     }else{
         $zipFilename = $url

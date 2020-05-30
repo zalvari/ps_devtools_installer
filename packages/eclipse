@@ -1,5 +1,5 @@
-group=IDE
-name=Eclipse
+group=ide
+name=eclipse
 version=2020-03
 url=D:\\dev\\ps_installer\\zip\\eclipse.zip
-dependencies={jdk_1.8=1.8.241}
+dependencies=jdk1.8:1.8.241

@@ -2,10 +2,9 @@
 . $PSScriptRoot\lib\menu.ps1
 . $PSScriptRoot\lib\package.ps1
 
-$mainMenuOptions=@{"1"="Install Billing tools package";
-                   "2"="Choose application to install";
-                   "3"="Uninstall application";
-                   "4"="Configure"
+$mainMenuOptions=@{"1"="Choose application to install";
+                   "2"="Uninstall application (not implemented)";
+                   "3"="Configure"
                    }
 
 function InstallPackageMenu {
@@ -13,7 +12,18 @@ function InstallPackageMenu {
     if ($packageChoose -ne "q")
     {
         if ($availablePackages.ContainsKey( $packageChoose)){
-            install_package $($availablePackages.$packageChoose)
+
+            $dep = $(check_dependencies $($availablePackages.$packageChoose) $availablePackages) 
+            foreach($v in $dep.values){
+           
+                if ($v.group -ne "bulk"){
+                    install_package $v
+                }
+            }
+            if ($($availablePackages.$packageChoose).group -ne "bulk"){
+                install_package $($availablePackages.$packageChoose)
+            }
+
             pause
         }else{
             return "option not available"
@@ -24,19 +34,16 @@ function InstallPackageMenu {
 function MainMenu {
 
 do{
-$selection = Show-Menu $mainMenuOptions "Billing Tools" "exit"
+$selection = Show-Menu $mainMenuOptions "Dev Team Tools" "exit"
 Write-Host $msg
  switch ($selection )
- {
-     '1' {
-         'You chose option #1'
-         pause
-     } '2' {
-         $msg= InstallPackageMenu         
+ { 
+    '1' {
+         $msg = InstallPackageMenu         
          
-     } '3' {
+     } '2' {
          Show-Menu $availablePackagesMenu "Uninstall Application"
-     } '4' {
+     } '3' {
         setup_INSTALL_PATH
      } 'q' {
          return
@@ -47,8 +54,8 @@ Write-Host $msg
 }
 
 
-$availablePackages=Load_Packages $PACKAGE_DESCRIPTOR_DIR
+$availablePackages=Load_Packages "$PSScriptRoot\packages"
+$availablePackagesMenu=List_Packages $availablePackages 
 
-$availablePackagesMenu=List_Packages $availablePackages  
 
 MainMenu
